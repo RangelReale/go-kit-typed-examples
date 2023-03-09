@@ -49,11 +49,6 @@ func proxyingMiddleware(ctx context.Context, instances string, logger log.Logger
 	for _, instance := range instanceList {
 		var e tendpoint.Endpoint[uppercaseRequest, uppercaseResponse]
 		e = makeUppercaseProxy(ctx, instance)
-		// e = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{}))(e)
-		// e = ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), qps))(e)
-
-		// e = tendpoint.MiddlewareAdapter[uppercaseRequest, uppercaseResponse](circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})))(e)
-
 		e = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), e)
 		e = tmiddleware.Wrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), qps)), e)
 		endpointer = append(endpointer, tendpoint.ReverseAdapter(e))
