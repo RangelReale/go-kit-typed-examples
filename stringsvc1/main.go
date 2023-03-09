@@ -75,13 +75,13 @@ func makeCountEndpoint(svc StringService) tendpoint.Endpoint[countRequest, count
 func main() {
 	svc := stringService{}
 
-	uppercaseHandler := thttptransport.NewServerStdResp(
+	uppercaseHandler := thttptransport.NewServerStdEnc(
 		makeUppercaseEndpoint(svc),
 		decodeUppercaseRequest,
 		encodeResponse,
 	)
 
-	countHandler := thttptransport.NewServerStdResp(
+	countHandler := thttptransport.NewServerStdEnc(
 		makeCountEndpoint(svc),
 		decodeCountRequest,
 		encodeResponse,

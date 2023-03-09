@@ -25,43 +25,43 @@ func MakeHandler(bs Service, logger kitlog.Logger) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	bookCargoHandler := thttptransport.NewServerStdResp(
+	bookCargoHandler := thttptransport.NewServerStdEnc(
 		makeBookCargoEndpoint(bs),
 		decodeBookCargoRequest,
 		encodeResponse,
 		opts...,
 	)
-	loadCargoHandler := thttptransport.NewServerStdResp(
+	loadCargoHandler := thttptransport.NewServerStdEnc(
 		makeLoadCargoEndpoint(bs),
 		decodeLoadCargoRequest,
 		encodeResponse,
 		opts...,
 	)
-	requestRoutesHandler := thttptransport.NewServerStdResp(
+	requestRoutesHandler := thttptransport.NewServerStdEnc(
 		makeRequestRoutesEndpoint(bs),
 		decodeRequestRoutesRequest,
 		encodeResponse,
 		opts...,
 	)
-	assignToRouteHandler := thttptransport.NewServerStdResp(
+	assignToRouteHandler := thttptransport.NewServerStdEnc(
 		makeAssignToRouteEndpoint(bs),
 		decodeAssignToRouteRequest,
 		encodeResponse,
 		opts...,
 	)
-	changeDestinationHandler := thttptransport.NewServerStdResp(
+	changeDestinationHandler := thttptransport.NewServerStdEnc(
 		makeChangeDestinationEndpoint(bs),
 		decodeChangeDestinationRequest,
 		encodeResponse,
 		opts...,
 	)
-	listCargosHandler := thttptransport.NewServerStdResp(
+	listCargosHandler := thttptransport.NewServerStdEnc(
 		makeListCargosEndpoint(bs),
 		decodeListCargosRequest,
 		encodeResponse,
 		opts...,
 	)
-	listLocationsHandler := thttptransport.NewServerStdResp(
+	listLocationsHandler := thttptransport.NewServerStdEnc(
 		makeListLocationsEndpoint(bs),
 		decodeListLocationsRequest,
 		encodeResponse,

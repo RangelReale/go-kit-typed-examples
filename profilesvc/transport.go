@@ -45,55 +45,55 @@ func MakeHTTPHandler(s Service, logger log.Logger) http.Handler {
 	// POST    /profiles/:id/addresses/            add a new address
 	// DELETE  /profiles/:id/addresses/:addressID  remove an address
 
-	r.Methods("POST").Path("/profiles/").Handler(thttptransport.NewServerStdResp(
+	r.Methods("POST").Path("/profiles/").Handler(thttptransport.NewServerStdEnc(
 		e.PostProfileEndpoint,
 		decodePostProfileRequest,
 		encodeResponse,
 		options...,
 	))
-	r.Methods("GET").Path("/profiles/{id}").Handler(thttptransport.NewServerStdResp(
+	r.Methods("GET").Path("/profiles/{id}").Handler(thttptransport.NewServerStdEnc(
 		e.GetProfileEndpoint,
 		decodeGetProfileRequest,
 		encodeResponse,
 		options...,
 	))
-	r.Methods("PUT").Path("/profiles/{id}").Handler(thttptransport.NewServerStdResp(
+	r.Methods("PUT").Path("/profiles/{id}").Handler(thttptransport.NewServerStdEnc(
 		e.PutProfileEndpoint,
 		decodePutProfileRequest,
 		encodeResponse,
 		options...,
 	))
-	r.Methods("PATCH").Path("/profiles/{id}").Handler(thttptransport.NewServerStdResp(
+	r.Methods("PATCH").Path("/profiles/{id}").Handler(thttptransport.NewServerStdEnc(
 		e.PatchProfileEndpoint,
 		decodePatchProfileRequest,
 		encodeResponse,
 		options...,
 	))
-	r.Methods("DELETE").Path("/profiles/{id}").Handler(thttptransport.NewServerStdResp(
+	r.Methods("DELETE").Path("/profiles/{id}").Handler(thttptransport.NewServerStdEnc(
 		e.DeleteProfileEndpoint,
 		decodeDeleteProfileRequest,
 		encodeResponse,
 		options...,
 	))
-	r.Methods("GET").Path("/profiles/{id}/addresses/").Handler(thttptransport.NewServerStdResp(
+	r.Methods("GET").Path("/profiles/{id}/addresses/").Handler(thttptransport.NewServerStdEnc(
 		e.GetAddressesEndpoint,
 		decodeGetAddressesRequest,
 		encodeResponse,
 		options...,
 	))
-	r.Methods("GET").Path("/profiles/{id}/addresses/{addressID}").Handler(thttptransport.NewServerStdResp(
+	r.Methods("GET").Path("/profiles/{id}/addresses/{addressID}").Handler(thttptransport.NewServerStdEnc(
 		e.GetAddressEndpoint,
 		decodeGetAddressRequest,
 		encodeResponse,
 		options...,
 	))
-	r.Methods("POST").Path("/profiles/{id}/addresses/").Handler(thttptransport.NewServerStdResp(
+	r.Methods("POST").Path("/profiles/{id}/addresses/").Handler(thttptransport.NewServerStdEnc(
 		e.PostAddressEndpoint,
 		decodePostAddressRequest,
 		encodeResponse,
 		options...,
 	))
-	r.Methods("DELETE").Path("/profiles/{id}/addresses/{addressID}").Handler(thttptransport.NewServerStdResp(
+	r.Methods("DELETE").Path("/profiles/{id}/addresses/{addressID}").Handler(thttptransport.NewServerStdEnc(
 		e.DeleteAddressEndpoint,
 		decodeDeleteAddressRequest,
 		encodeResponse,

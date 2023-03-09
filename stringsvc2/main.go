@@ -40,13 +40,13 @@ func main() {
 	svc = loggingMiddleware{logger, svc}
 	svc = instrumentingMiddleware{requestCount, requestLatency, countResult, svc}
 
-	uppercaseHandler := thttptransport.NewServerStdResp(
+	uppercaseHandler := thttptransport.NewServerStdEnc(
 		makeUppercaseEndpoint(svc),
 		decodeUppercaseRequest,
 		encodeResponse,
 	)
 
-	countHandler := thttptransport.NewServerStdResp(
+	countHandler := thttptransport.NewServerStdEnc(
 		makeCountEndpoint(svc),
 		decodeCountRequest,
 		encodeResponse,
