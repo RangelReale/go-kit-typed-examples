@@ -1,11 +1,12 @@
 module github.com/go-kit/examples
 
-go 1.16
+go 1.18
 
 require (
 	github.com/apache/thrift v0.14.1
 	github.com/go-kit/kit v0.10.0
 	github.com/golang/protobuf v1.5.2
+	github.com/RangelReale/go-kit-typed v0.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/consul/api v1.8.1
 	github.com/lightstep/lightstep-tracer-go v0.25.0
@@ -22,3 +23,5 @@ require (
 	google.golang.org/grpc v1.38.0
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 )
+
+replace github.com/RangelReale/go-kit-typed => ../go-kit-typed/
