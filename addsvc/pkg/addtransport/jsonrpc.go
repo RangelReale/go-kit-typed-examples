@@ -11,7 +11,7 @@ import (
 	"golang.org/x/time/rate"
 
 	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
-	tjsonrpc "github.com/RangelReale/go-kit-typed/transport/jsonrpc"
+	tjsonrpc "github.com/RangelReale/go-kit-typed/transport/http/jsonrpc"
 	"github.com/go-kit/examples/addsvc/pkg/addendpoint"
 	"github.com/go-kit/examples/addsvc/pkg/addservice"
 	"github.com/go-kit/kit/circuitbreaker"
