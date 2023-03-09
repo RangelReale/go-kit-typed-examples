@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"time"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	"github.com/go-kit/kit/circuitbreaker"
-	"github.com/go-kit/kit/endpoint"
-	kithttp "github.com/go-kit/kit/transport/http"
 
 	"github.com/go-kit/examples/shipping/cargo"
 	"github.com/go-kit/examples/shipping/location"
@@ -18,20 +18,18 @@ import (
 
 type proxyService struct {
 	context.Context
-	FetchRoutesEndpoint endpoint.Endpoint
+	FetchRoutesEndpoint tendpoint.Endpoint[fetchRoutesRequest, fetchRoutesResponse]
 	Service
 }
 
 func (s proxyService) FetchRoutesForSpecification(rs cargo.RouteSpecification) []cargo.Itinerary {
-	response, err := s.FetchRoutesEndpoint(s.Context, fetchRoutesRequest{
+	resp, err := s.FetchRoutesEndpoint(s.Context, fetchRoutesRequest{
 		From: string(rs.Origin),
 		To:   string(rs.Destination),
 	})
 	if err != nil {
 		return []cargo.Itinerary{}
 	}
-
-	resp := response.(fetchRoutesResponse)
 
 	var itineraries []cargo.Itinerary
 	for _, r := range resp.Paths {
@@ -58,9 +56,9 @@ type ServiceMiddleware func(Service) Service
 // NewProxyingMiddleware returns a new instance of a proxying middleware.
 func NewProxyingMiddleware(ctx context.Context, proxyURL string) ServiceMiddleware {
 	return func(next Service) Service {
-		var e endpoint.Endpoint
+		var e tendpoint.Endpoint[fetchRoutesRequest, fetchRoutesResponse]
 		e = makeFetchRoutesEndpoint(ctx, proxyURL)
-		e = circuitbreaker.Hystrix("fetch-routes")(e)
+		e = tendpoint.MiddlewareWrapper(circuitbreaker.Hystrix("fetch-routes"), e)
 		return proxyService{ctx, e, next}
 	}
 }
@@ -82,7 +80,7 @@ type fetchRoutesResponse struct {
 	} `json:"paths"`
 }
 
-func makeFetchRoutesEndpoint(ctx context.Context, instance string) endpoint.Endpoint {
+func makeFetchRoutesEndpoint(ctx context.Context, instance string) tendpoint.Endpoint[fetchRoutesRequest, fetchRoutesResponse] {
 	u, err := url.Parse(instance)
 	if err != nil {
 		panic(err)
@@ -90,24 +88,22 @@ func makeFetchRoutesEndpoint(ctx context.Context, instance string) endpoint.Endp
 	if u.Path == "" {
 		u.Path = "/paths"
 	}
-	return kithttp.NewClient(
+	return thttptransport.NewClient(
 		"GET", u,
 		encodeFetchRoutesRequest,
 		decodeFetchRoutesResponse,
 	).Endpoint()
 }
 
-func decodeFetchRoutesResponse(_ context.Context, resp *http.Response) (interface{}, error) {
+func decodeFetchRoutesResponse(_ context.Context, resp *http.Response) (fetchRoutesResponse, error) {
 	var response fetchRoutesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
+		return fetchRoutesResponse{}, err
 	}
 	return response, nil
 }
 
-func encodeFetchRoutesRequest(_ context.Context, r *http.Request, request interface{}) error {
-	req := request.(fetchRoutesRequest)
-
+func encodeFetchRoutesRequest(_ context.Context, r *http.Request, req fetchRoutesRequest) error {
 	vals := r.URL.Query()
 	vals.Add("from", req.From)
 	vals.Add("to", req.To)

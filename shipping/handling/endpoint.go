@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-kit/kit/endpoint"
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 
 	"github.com/go-kit/examples/shipping/cargo"
 	"github.com/go-kit/examples/shipping/location"
@@ -25,9 +25,8 @@ type registerIncidentResponse struct {
 
 func (r registerIncidentResponse) error() error { return r.Err }
 
-func makeRegisterIncidentEndpoint(hs Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(registerIncidentRequest)
+func makeRegisterIncidentEndpoint(hs Service) tendpoint.Endpoint[registerIncidentRequest, registerIncidentResponse] {
+	return func(ctx context.Context, req registerIncidentRequest) (registerIncidentResponse, error) {
 		err := hs.RegisterHandlingEvent(req.CompletionTime, req.ID, req.Voyage, req.Location, req.EventType)
 		return registerIncidentResponse{Err: err}, nil
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	kitlog "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/transport"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -26,7 +27,7 @@ func MakeHandler(hs Service, logger kitlog.Logger) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	registerIncidentHandler := kithttp.NewServer(
+	registerIncidentHandler := thttptransport.NewServerStdEnc(
 		makeRegisterIncidentEndpoint(hs),
 		decodeRegisterIncidentRequest,
 		encodeResponse,
@@ -38,7 +39,7 @@ func MakeHandler(hs Service, logger kitlog.Logger) http.Handler {
 	return r
 }
 
-func decodeRegisterIncidentRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeRegisterIncidentRequest(_ context.Context, r *http.Request) (registerIncidentRequest, error) {
 	var body struct {
 		CompletionTime time.Time `json:"completion_time"`
 		TrackingID     string    `json:"tracking_id"`
@@ -48,7 +49,7 @@ func decodeRegisterIncidentRequest(_ context.Context, r *http.Request) (interfac
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		return nil, err
+		return registerIncidentRequest{}, err
 	}
 
 	return registerIncidentRequest{
