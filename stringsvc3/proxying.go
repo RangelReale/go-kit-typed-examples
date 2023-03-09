@@ -106,10 +106,10 @@ func makeUppercaseProxy(ctx context.Context, instance string) tendpoint.Endpoint
 	if u.Path == "" {
 		u.Path = "/uppercase"
 	}
-	return thttptransport.NewClient(
+	return thttptransport.NewClientStdEnc[uppercaseRequest](
 		"GET",
 		u,
-		thttptransport.EncodeRequestFuncAdapter[uppercaseRequest](encodeRequest),
+		encodeRequest,
 		decodeUppercaseResponse,
 	).Endpoint()
 }
