@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
-	"strings"
 	"flag"
+	"log"
 	"net/http"
+	"strings"
 
-	"github.com/go-kit/kit/endpoint"
-	natstransport "github.com/go-kit/kit/transport/nats"
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
+	tnatstransport "github.com/RangelReale/go-kit-typed/transport/nats"
 	httptransport "github.com/go-kit/kit/transport/http"
+	natstransport "github.com/go-kit/kit/transport/nats"
 
 	"github.com/nats-io/nats.go"
 )
@@ -58,8 +60,8 @@ type countResponse struct {
 }
 
 // Endpoints are a primary abstraction in go-kit. An endpoint represents a single RPC (method in our service interface)
-func makeUppercaseHTTPEndpoint(nc *nats.Conn) endpoint.Endpoint {
-	return natstransport.NewPublisher(
+func makeUppercaseHTTPEndpoint(nc *nats.Conn) tendpoint.Endpoint[uppercaseRequest, uppercaseResponse] {
+	return tnatstransport.NewPublisherStdEnc[uppercaseRequest, uppercaseResponse](
 		nc,
 		"stringsvc.uppercase",
 		natstransport.EncodeJSONRequest,
@@ -67,8 +69,8 @@ func makeUppercaseHTTPEndpoint(nc *nats.Conn) endpoint.Endpoint {
 	).Endpoint()
 }
 
-func makeCountHTTPEndpoint(nc *nats.Conn) endpoint.Endpoint {
-	return natstransport.NewPublisher(
+func makeCountHTTPEndpoint(nc *nats.Conn) tendpoint.Endpoint[countRequest, countResponse] {
+	return tnatstransport.NewPublisherStdEnc[countRequest, countResponse](
 		nc,
 		"stringsvc.count",
 		natstransport.EncodeJSONRequest,
@@ -76,9 +78,8 @@ func makeCountHTTPEndpoint(nc *nats.Conn) endpoint.Endpoint {
 	).Endpoint()
 }
 
-func makeUppercaseEndpoint(svc StringService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(uppercaseRequest)
+func makeUppercaseEndpoint(svc StringService) tendpoint.Endpoint[uppercaseRequest, uppercaseResponse] {
+	return func(ctx context.Context, req uppercaseRequest) (uppercaseResponse, error) {
 		v, err := svc.Uppercase(ctx, req.S)
 		if err != nil {
 			return uppercaseResponse{v, err.Error()}, nil
@@ -87,9 +88,8 @@ func makeUppercaseEndpoint(svc StringService) endpoint.Endpoint {
 	}
 }
 
-func makeCountEndpoint(svc StringService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(countRequest)
+func makeCountEndpoint(svc StringService) tendpoint.Endpoint[countRequest, countResponse] {
+	return func(ctx context.Context, req countRequest) (countResponse, error) {
 		v := svc.Count(ctx, req.S)
 		return countResponse{v}, nil
 	}
@@ -108,25 +108,25 @@ func main() {
 	}
 	defer nc.Close()
 
-	uppercaseHTTPHandler := httptransport.NewServer(
+	uppercaseHTTPHandler := thttptransport.NewServerStdEnc(
 		makeUppercaseHTTPEndpoint(nc),
 		decodeUppercaseHTTPRequest,
 		httptransport.EncodeJSONResponse,
 	)
 
-	countHTTPHandler := httptransport.NewServer(
+	countHTTPHandler := thttptransport.NewServerStdEnc(
 		makeCountHTTPEndpoint(nc),
 		decodeCountHTTPRequest,
 		httptransport.EncodeJSONResponse,
 	)
 
-	uppercaseHandler := natstransport.NewSubscriber(
+	uppercaseHandler := tnatstransport.NewSubscriberStdEnc(
 		makeUppercaseEndpoint(svc),
 		decodeUppercaseRequest,
 		natstransport.EncodeJSONResponse,
 	)
 
-	countHandler := natstransport.NewSubscriber(
+	countHandler := tnatstransport.NewSubscriberStdEnc(
 		makeCountEndpoint(svc),
 		decodeCountRequest,
 		natstransport.EncodeJSONResponse,
@@ -150,57 +150,56 @@ func main() {
 
 }
 
-func decodeUppercaseHTTPRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeUppercaseHTTPRequest(_ context.Context, r *http.Request) (uppercaseRequest, error) {
 	var request uppercaseRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		return nil, err
+		return uppercaseRequest{}, err
 	}
 	return request, nil
 }
 
-func decodeCountHTTPRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeCountHTTPRequest(_ context.Context, r *http.Request) (countRequest, error) {
 	var request countRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		return nil, err
+		return countRequest{}, err
 	}
 	return request, nil
 }
 
-func decodeUppercaseResponse(_ context.Context, msg *nats.Msg) (interface{}, error) {
+func decodeUppercaseResponse(_ context.Context, msg *nats.Msg) (uppercaseResponse, error) {
 	var response uppercaseResponse
 
 	if err := json.Unmarshal(msg.Data, &response); err != nil {
-		return nil, err
+		return uppercaseResponse{}, err
 	}
 
 	return response, nil
 }
 
-func decodeCountResponse(_ context.Context, msg *nats.Msg) (interface{}, error) {
+func decodeCountResponse(_ context.Context, msg *nats.Msg) (countResponse, error) {
 	var response countResponse
 
 	if err := json.Unmarshal(msg.Data, &response); err != nil {
-		return nil, err
+		return countResponse{}, err
 	}
 
 	return response, nil
 }
 
-func decodeUppercaseRequest(_ context.Context, msg *nats.Msg) (interface{}, error) {
+func decodeUppercaseRequest(_ context.Context, msg *nats.Msg) (uppercaseRequest, error) {
 	var request uppercaseRequest
 
 	if err := json.Unmarshal(msg.Data, &request); err != nil {
-		return nil, err
+		return uppercaseRequest{}, err
 	}
 	return request, nil
 }
 
-func decodeCountRequest(_ context.Context, msg *nats.Msg) (interface{}, error) {
+func decodeCountRequest(_ context.Context, msg *nats.Msg) (countRequest, error) {
 	var request countRequest
 
 	if err := json.Unmarshal(msg.Data, &request); err != nil {
-		return nil, err
+		return countRequest{}, err
 	}
 	return request, nil
 }
-
