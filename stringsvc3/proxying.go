@@ -13,6 +13,7 @@ import (
 	"github.com/sony/gobreaker"
 
 	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	tmiddleware "github.com/RangelReale/go-kit-typed/endpoint/middleware"
 	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/kit/endpoint"
@@ -53,8 +54,8 @@ func proxyingMiddleware(ctx context.Context, instances string, logger log.Logger
 
 		// e = tendpoint.MiddlewareAdapter[uppercaseRequest, uppercaseResponse](circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})))(e)
 
-		e = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), e)
-		e = tendpoint.MiddlewareWrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), qps)), e)
+		e = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), e)
+		e = tmiddleware.Wrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), qps)), e)
 		endpointer = append(endpointer, tendpoint.ReverseAdapter(e))
 	}
 

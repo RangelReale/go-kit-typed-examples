@@ -11,13 +11,14 @@ import (
 	"strings"
 	"time"
 
-	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 	"golang.org/x/time/rate"
 
 	stdopentracing "github.com/opentracing/opentracing-go"
 	stdzipkin "github.com/openzipkin/zipkin-go"
 	"github.com/sony/gobreaker"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	tmiddleware "github.com/RangelReale/go-kit-typed/endpoint/middleware"
 	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/kit/endpoint"
@@ -110,12 +111,12 @@ func NewHTTPClient(instance string, otTracer stdopentracing.Tracer, zipkinTracer
 			decodeHTTPSumResponse,
 			append(options, httptransport.ClientBefore(opentracing.ContextToHTTP(otTracer, logger)))...,
 		).Endpoint()
-		sumEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(otTracer, "Sum"), sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(opentracing.TraceClient(otTracer, "Sum"), sumEndpoint)
 		if zipkinTracer != nil {
-			sumEndpoint = tendpoint.MiddlewareWrapper(zipkin.TraceEndpoint(zipkinTracer, "Sum"), sumEndpoint)
+			sumEndpoint = tmiddleware.Wrapper(zipkin.TraceEndpoint(zipkinTracer, "Sum"), sumEndpoint)
 		}
-		sumEndpoint = tendpoint.MiddlewareWrapper(limiter, sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		sumEndpoint = tmiddleware.Wrapper(limiter, sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Sum",
 			Timeout: 30 * time.Second,
 		})), sumEndpoint)
@@ -132,12 +133,12 @@ func NewHTTPClient(instance string, otTracer stdopentracing.Tracer, zipkinTracer
 			decodeHTTPConcatResponse,
 			append(options, httptransport.ClientBefore(opentracing.ContextToHTTP(otTracer, logger)))...,
 		).Endpoint()
-		concatEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(otTracer, "Concat"), concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(opentracing.TraceClient(otTracer, "Concat"), concatEndpoint)
 		if zipkinTracer != nil {
-			concatEndpoint = tendpoint.MiddlewareWrapper(zipkin.TraceEndpoint(zipkinTracer, "Concat"), concatEndpoint)
+			concatEndpoint = tmiddleware.Wrapper(zipkin.TraceEndpoint(zipkinTracer, "Concat"), concatEndpoint)
 		}
-		concatEndpoint = tendpoint.MiddlewareWrapper(limiter, concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		concatEndpoint = tmiddleware.Wrapper(limiter, concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Concat",
 			Timeout: 10 * time.Second,
 		})), concatEndpoint)

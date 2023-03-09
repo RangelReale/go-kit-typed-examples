@@ -11,6 +11,7 @@ import (
 	"golang.org/x/time/rate"
 
 	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	tmiddleware "github.com/RangelReale/go-kit-typed/endpoint/middleware"
 	tjsonrpc "github.com/RangelReale/go-kit-typed/transport/http/jsonrpc"
 	"github.com/go-kit/examples/addsvc/pkg/addendpoint"
 	"github.com/go-kit/examples/addsvc/pkg/addservice"
@@ -61,9 +62,9 @@ func NewJSONRPCClient(instance string, tracer stdopentracing.Tracer, logger log.
 			tjsonrpc.ClientRequestEncoder(encodeSumRequest),
 			tjsonrpc.ClientResponseDecoder(decodeSumResponse),
 		).Endpoint()
-		sumEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(tracer, "Sum"), sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(limiter, sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		sumEndpoint = tmiddleware.Wrapper(opentracing.TraceClient(tracer, "Sum"), sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(limiter, sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Sum",
 			Timeout: 30 * time.Second,
 		})), sumEndpoint)
@@ -77,9 +78,9 @@ func NewJSONRPCClient(instance string, tracer stdopentracing.Tracer, logger log.
 			tjsonrpc.ClientRequestEncoder(encodeConcatRequest),
 			tjsonrpc.ClientResponseDecoder(decodeConcatResponse),
 		).Endpoint()
-		concatEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(tracer, "Concat"), concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(limiter, concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		concatEndpoint = tmiddleware.Wrapper(opentracing.TraceClient(tracer, "Concat"), concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(limiter, concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Concat",
 			Timeout: 30 * time.Second,
 		})), concatEndpoint)

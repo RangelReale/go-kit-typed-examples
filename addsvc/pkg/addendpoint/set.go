@@ -11,6 +11,7 @@ import (
 	"github.com/sony/gobreaker"
 
 	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	tmiddleware "github.com/RangelReale/go-kit-typed/endpoint/middleware"
 	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
@@ -38,28 +39,28 @@ func New(svc addservice.Service, logger log.Logger, duration metrics.Histogram, 
 		sumEndpoint = MakeSumEndpoint(svc)
 		// Sum is limited to 1 request per second with burst of 1 request.
 		// Note, rate is defined as a time interval between requests.
-		sumEndpoint = tendpoint.MiddlewareWrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), 1)), sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceServer(otTracer, "Sum"), sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), 1)), sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(opentracing.TraceServer(otTracer, "Sum"), sumEndpoint)
 		if zipkinTracer != nil {
-			sumEndpoint = tendpoint.MiddlewareWrapper(zipkin.TraceEndpoint(zipkinTracer, "Sum"), sumEndpoint)
+			sumEndpoint = tmiddleware.Wrapper(zipkin.TraceEndpoint(zipkinTracer, "Sum"), sumEndpoint)
 		}
-		sumEndpoint = tendpoint.MiddlewareWrapper(LoggingMiddleware(log.With(logger, "method", "Sum")), sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(InstrumentingMiddleware(duration.With("method", "Sum")), sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(LoggingMiddleware(log.With(logger, "method", "Sum")), sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(InstrumentingMiddleware(duration.With("method", "Sum")), sumEndpoint)
 	}
 	var concatEndpoint tendpoint.Endpoint[ConcatRequest, ConcatResponse]
 	{
 		concatEndpoint = MakeConcatEndpoint(svc)
 		// Concat is limited to 1 request per second with burst of 100 requests.
 		// Note, rate is defined as a number of requests per second.
-		concatEndpoint = tendpoint.MiddlewareWrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Limit(1), 100)), concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceServer(otTracer, "Concat"), concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Limit(1), 100)), concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(opentracing.TraceServer(otTracer, "Concat"), concatEndpoint)
 		if zipkinTracer != nil {
-			concatEndpoint = tendpoint.MiddlewareWrapper(zipkin.TraceEndpoint(zipkinTracer, "Concat"), concatEndpoint)
+			concatEndpoint = tmiddleware.Wrapper(zipkin.TraceEndpoint(zipkinTracer, "Concat"), concatEndpoint)
 		}
-		concatEndpoint = tendpoint.MiddlewareWrapper(LoggingMiddleware(log.With(logger, "method", "Concat")), concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(InstrumentingMiddleware(duration.With("method", "Concat")), concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(LoggingMiddleware(log.With(logger, "method", "Concat")), concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(InstrumentingMiddleware(duration.With("method", "Concat")), concatEndpoint)
 	}
 	return Set{
 		SumEndpoint:    sumEndpoint,

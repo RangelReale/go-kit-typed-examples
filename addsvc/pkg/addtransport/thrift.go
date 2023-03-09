@@ -9,6 +9,7 @@ import (
 	"github.com/sony/gobreaker"
 
 	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	tmiddleware "github.com/RangelReale/go-kit-typed/endpoint/middleware"
 	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/kit/ratelimit"
 
@@ -65,8 +66,8 @@ func NewThriftClient(client *addthrift.AddServiceClient) addservice.Service {
 	var sumEndpoint tendpoint.Endpoint[addendpoint.SumRequest, addendpoint.SumResponse]
 	{
 		sumEndpoint = MakeThriftSumEndpoint(client)
-		sumEndpoint = tendpoint.MiddlewareWrapper(limiter, sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		sumEndpoint = tmiddleware.Wrapper(limiter, sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Sum",
 			Timeout: 30 * time.Second,
 		})), sumEndpoint)
@@ -77,8 +78,8 @@ func NewThriftClient(client *addthrift.AddServiceClient) addservice.Service {
 	var concatEndpoint tendpoint.Endpoint[addendpoint.ConcatRequest, addendpoint.ConcatResponse]
 	{
 		concatEndpoint = MakeThriftConcatEndpoint(client)
-		concatEndpoint = tendpoint.MiddlewareWrapper(limiter, concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		concatEndpoint = tmiddleware.Wrapper(limiter, concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Concat",
 			Timeout: 10 * time.Second,
 		})), concatEndpoint)

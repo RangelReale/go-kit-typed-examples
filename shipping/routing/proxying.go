@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	tmiddleware "github.com/RangelReale/go-kit-typed/endpoint/middleware"
 	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	"github.com/go-kit/kit/circuitbreaker"
 
@@ -58,7 +59,7 @@ func NewProxyingMiddleware(ctx context.Context, proxyURL string) ServiceMiddlewa
 	return func(next Service) Service {
 		var e tendpoint.Endpoint[fetchRoutesRequest, fetchRoutesResponse]
 		e = makeFetchRoutesEndpoint(ctx, proxyURL)
-		e = tendpoint.MiddlewareWrapper(circuitbreaker.Hystrix("fetch-routes"), e)
+		e = tmiddleware.Wrapper(circuitbreaker.Hystrix("fetch-routes"), e)
 		return proxyService{ctx, e, next}
 	}
 }

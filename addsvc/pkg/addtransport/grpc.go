@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 	"google.golang.org/grpc"
 
 	stdopentracing "github.com/opentracing/opentracing-go"
@@ -13,6 +12,8 @@ import (
 	"github.com/sony/gobreaker"
 	"golang.org/x/time/rate"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	tmiddleware "github.com/RangelReale/go-kit-typed/endpoint/middleware"
 	tgrpctransport "github.com/RangelReale/go-kit-typed/transport/grpc"
 	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/kit/log"
@@ -124,9 +125,9 @@ func NewGRPCClient(conn *grpc.ClientConn, otTracer stdopentracing.Tracer, zipkin
 			pb.SumReply{},
 			append(options, grpctransport.ClientBefore(opentracing.ContextToGRPC(otTracer, logger)))...,
 		).Endpoint()
-		sumEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(otTracer, "Sum"), sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(limiter, sumEndpoint)
-		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		sumEndpoint = tmiddleware.Wrapper(opentracing.TraceClient(otTracer, "Sum"), sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(limiter, sumEndpoint)
+		sumEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Sum",
 			Timeout: 30 * time.Second,
 		})), sumEndpoint)
@@ -145,9 +146,9 @@ func NewGRPCClient(conn *grpc.ClientConn, otTracer stdopentracing.Tracer, zipkin
 			pb.ConcatReply{},
 			append(options, grpctransport.ClientBefore(opentracing.ContextToGRPC(otTracer, logger)))...,
 		).Endpoint()
-		concatEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(otTracer, "Concat"), concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(limiter, concatEndpoint)
-		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		concatEndpoint = tmiddleware.Wrapper(opentracing.TraceClient(otTracer, "Concat"), concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(limiter, concatEndpoint)
+		concatEndpoint = tmiddleware.Wrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Concat",
 			Timeout: 10 * time.Second,
 		})), concatEndpoint)
