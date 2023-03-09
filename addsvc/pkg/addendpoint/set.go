@@ -10,6 +10,7 @@ import (
 	stdzipkin "github.com/openzipkin/zipkin-go"
 	"github.com/sony/gobreaker"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
@@ -25,40 +26,40 @@ import (
 // be used as a helper struct, to collect all of the endpoints into a single
 // parameter.
 type Set struct {
-	SumEndpoint    endpoint.Endpoint
-	ConcatEndpoint endpoint.Endpoint
+	SumEndpoint    tendpoint.Endpoint[SumRequest, SumResponse]
+	ConcatEndpoint tendpoint.Endpoint[ConcatRequest, ConcatResponse]
 }
 
 // New returns a Set that wraps the provided server, and wires in all of the
 // expected endpoint middlewares via the various parameters.
 func New(svc addservice.Service, logger log.Logger, duration metrics.Histogram, otTracer stdopentracing.Tracer, zipkinTracer *stdzipkin.Tracer) Set {
-	var sumEndpoint endpoint.Endpoint
+	var sumEndpoint tendpoint.Endpoint[SumRequest, SumResponse]
 	{
 		sumEndpoint = MakeSumEndpoint(svc)
 		// Sum is limited to 1 request per second with burst of 1 request.
 		// Note, rate is defined as a time interval between requests.
-		sumEndpoint = ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), 1))(sumEndpoint)
-		sumEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{}))(sumEndpoint)
-		sumEndpoint = opentracing.TraceServer(otTracer, "Sum")(sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), 1)), sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceServer(otTracer, "Sum"), sumEndpoint)
 		if zipkinTracer != nil {
-			sumEndpoint = zipkin.TraceEndpoint(zipkinTracer, "Sum")(sumEndpoint)
+			sumEndpoint = tendpoint.MiddlewareWrapper(zipkin.TraceEndpoint(zipkinTracer, "Sum"), sumEndpoint)
 		}
-		sumEndpoint = LoggingMiddleware(log.With(logger, "method", "Sum"))(sumEndpoint)
-		sumEndpoint = InstrumentingMiddleware(duration.With("method", "Sum"))(sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(LoggingMiddleware(log.With(logger, "method", "Sum")), sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(InstrumentingMiddleware(duration.With("method", "Sum")), sumEndpoint)
 	}
-	var concatEndpoint endpoint.Endpoint
+	var concatEndpoint tendpoint.Endpoint[ConcatRequest, ConcatResponse]
 	{
 		concatEndpoint = MakeConcatEndpoint(svc)
 		// Concat is limited to 1 request per second with burst of 100 requests.
 		// Note, rate is defined as a number of requests per second.
-		concatEndpoint = ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Limit(1), 100))(concatEndpoint)
-		concatEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{}))(concatEndpoint)
-		concatEndpoint = opentracing.TraceServer(otTracer, "Concat")(concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Limit(1), 100)), concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceServer(otTracer, "Concat"), concatEndpoint)
 		if zipkinTracer != nil {
-			concatEndpoint = zipkin.TraceEndpoint(zipkinTracer, "Concat")(concatEndpoint)
+			concatEndpoint = tendpoint.MiddlewareWrapper(zipkin.TraceEndpoint(zipkinTracer, "Concat"), concatEndpoint)
 		}
-		concatEndpoint = LoggingMiddleware(log.With(logger, "method", "Concat"))(concatEndpoint)
-		concatEndpoint = InstrumentingMiddleware(duration.With("method", "Concat"))(concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(LoggingMiddleware(log.With(logger, "method", "Concat")), concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(InstrumentingMiddleware(duration.With("method", "Concat")), concatEndpoint)
 	}
 	return Set{
 		SumEndpoint:    sumEndpoint,
@@ -69,38 +70,34 @@ func New(svc addservice.Service, logger log.Logger, duration metrics.Histogram, 
 // Sum implements the service interface, so Set may be used as a service.
 // This is primarily useful in the context of a client library.
 func (s Set) Sum(ctx context.Context, a, b int) (int, error) {
-	resp, err := s.SumEndpoint(ctx, SumRequest{A: a, B: b})
+	response, err := s.SumEndpoint(ctx, SumRequest{A: a, B: b})
 	if err != nil {
 		return 0, err
 	}
-	response := resp.(SumResponse)
 	return response.V, response.Err
 }
 
 // Concat implements the service interface, so Set may be used as a
 // service. This is primarily useful in the context of a client library.
 func (s Set) Concat(ctx context.Context, a, b string) (string, error) {
-	resp, err := s.ConcatEndpoint(ctx, ConcatRequest{A: a, B: b})
+	response, err := s.ConcatEndpoint(ctx, ConcatRequest{A: a, B: b})
 	if err != nil {
 		return "", err
 	}
-	response := resp.(ConcatResponse)
 	return response.V, response.Err
 }
 
 // MakeSumEndpoint constructs a Sum endpoint wrapping the service.
-func MakeSumEndpoint(s addservice.Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(SumRequest)
+func MakeSumEndpoint(s addservice.Service) tendpoint.Endpoint[SumRequest, SumResponse] {
+	return func(ctx context.Context, req SumRequest) (response SumResponse, err error) {
 		v, err := s.Sum(ctx, req.A, req.B)
 		return SumResponse{V: v, Err: err}, nil
 	}
 }
 
 // MakeConcatEndpoint constructs a Concat endpoint wrapping the service.
-func MakeConcatEndpoint(s addservice.Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(ConcatRequest)
+func MakeConcatEndpoint(s addservice.Service) tendpoint.Endpoint[ConcatRequest, ConcatResponse] {
+	return func(ctx context.Context, req ConcatRequest) (response ConcatResponse, err error) {
 		v, err := s.Concat(ctx, req.A, req.B)
 		return ConcatResponse{V: v, Err: err}, nil
 	}

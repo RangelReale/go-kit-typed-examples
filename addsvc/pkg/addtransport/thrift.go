@@ -8,8 +8,8 @@ import (
 
 	"github.com/sony/gobreaker"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 	"github.com/go-kit/kit/circuitbreaker"
-	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/ratelimit"
 
 	"github.com/go-kit/examples/addsvc/pkg/addendpoint"
@@ -31,21 +31,19 @@ func NewThriftServer(endpoints addendpoint.Set) addthrift.AddService {
 
 func (s *thriftServer) Sum(ctx context.Context, a int64, b int64) (*addthrift.SumReply, error) {
 	request := addendpoint.SumRequest{A: int(a), B: int(b)}
-	response, err := s.endpoints.SumEndpoint(ctx, request)
+	resp, err := s.endpoints.SumEndpoint(ctx, request)
 	if err != nil {
 		return nil, err
 	}
-	resp := response.(addendpoint.SumResponse)
 	return &addthrift.SumReply{Value: int64(resp.V), Err: err2str(resp.Err)}, nil
 }
 
 func (s *thriftServer) Concat(ctx context.Context, a string, b string) (*addthrift.ConcatReply, error) {
 	request := addendpoint.ConcatRequest{A: a, B: b}
-	response, err := s.endpoints.ConcatEndpoint(ctx, request)
+	resp, err := s.endpoints.ConcatEndpoint(ctx, request)
 	if err != nil {
 		return nil, err
 	}
-	resp := response.(addendpoint.ConcatResponse)
 	return &addthrift.ConcatReply{Value: resp.V, Err: err2str(resp.Err)}, nil
 }
 
@@ -64,26 +62,26 @@ func NewThriftClient(client *addthrift.AddServiceClient) addservice.Service {
 	// Each individual endpoint is an http/transport.Client (which implements
 	// endpoint.Endpoint) that gets wrapped with various middlewares. If you
 	// could rely on a consistent set of client behavior.
-	var sumEndpoint endpoint.Endpoint
+	var sumEndpoint tendpoint.Endpoint[addendpoint.SumRequest, addendpoint.SumResponse]
 	{
 		sumEndpoint = MakeThriftSumEndpoint(client)
-		sumEndpoint = limiter(sumEndpoint)
-		sumEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		sumEndpoint = tendpoint.MiddlewareWrapper(limiter, sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Sum",
 			Timeout: 30 * time.Second,
-		}))(sumEndpoint)
+		})), sumEndpoint)
 	}
 
 	// The Concat endpoint is the same thing, with slightly different
 	// middlewares to demonstrate how to specialize per-endpoint.
-	var concatEndpoint endpoint.Endpoint
+	var concatEndpoint tendpoint.Endpoint[addendpoint.ConcatRequest, addendpoint.ConcatResponse]
 	{
 		concatEndpoint = MakeThriftConcatEndpoint(client)
-		concatEndpoint = limiter(concatEndpoint)
-		concatEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		concatEndpoint = tendpoint.MiddlewareWrapper(limiter, concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Concat",
 			Timeout: 10 * time.Second,
-		}))(concatEndpoint)
+		})), concatEndpoint)
 	}
 
 	// Returning the endpoint.Set as a service.Service relies on the
@@ -97,12 +95,11 @@ func NewThriftClient(client *addthrift.AddServiceClient) addservice.Service {
 
 // MakeThriftSumEndpoint returns an endpoint that invokes the passed Thrift client.
 // Useful only in clients, and only until a proper transport/thrift.Client exists.
-func MakeThriftSumEndpoint(client *addthrift.AddServiceClient) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(addendpoint.SumRequest)
+func MakeThriftSumEndpoint(client *addthrift.AddServiceClient) tendpoint.Endpoint[addendpoint.SumRequest, addendpoint.SumResponse] {
+	return func(ctx context.Context, req addendpoint.SumRequest) (addendpoint.SumResponse, error) {
 		reply, err := client.Sum(ctx, int64(req.A), int64(req.B))
 		if err == addservice.ErrIntOverflow {
-			return nil, err // special case; see comment on ErrIntOverflow
+			return addendpoint.SumResponse{}, err // special case; see comment on ErrIntOverflow
 		}
 		return addendpoint.SumResponse{V: int(reply.Value), Err: err}, nil
 	}
@@ -111,9 +108,8 @@ func MakeThriftSumEndpoint(client *addthrift.AddServiceClient) endpoint.Endpoint
 // MakeThriftConcatEndpoint returns an endpoint that invokes the passed Thrift
 // client. Useful only in clients, and only until a proper
 // transport/thrift.Client exists.
-func MakeThriftConcatEndpoint(client *addthrift.AddServiceClient) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(addendpoint.ConcatRequest)
+func MakeThriftConcatEndpoint(client *addthrift.AddServiceClient) tendpoint.Endpoint[addendpoint.ConcatRequest, addendpoint.ConcatResponse] {
+	return func(ctx context.Context, req addendpoint.ConcatRequest) (addendpoint.ConcatResponse, error) {
 		reply, err := client.Concat(ctx, req.A, req.B)
 		return addendpoint.ConcatResponse{V: reply.Value, Err: err}, nil
 	}

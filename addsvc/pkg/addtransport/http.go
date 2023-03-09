@@ -11,12 +11,14 @@ import (
 	"strings"
 	"time"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 	"golang.org/x/time/rate"
 
 	stdopentracing "github.com/opentracing/opentracing-go"
 	stdzipkin "github.com/openzipkin/zipkin-go"
 	"github.com/sony/gobreaker"
 
+	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	"github.com/go-kit/kit/circuitbreaker"
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
@@ -48,13 +50,13 @@ func NewHTTPHandler(endpoints addendpoint.Set, otTracer stdopentracing.Tracer, z
 	}
 
 	m := http.NewServeMux()
-	m.Handle("/sum", httptransport.NewServer(
+	m.Handle("/sum", thttptransport.NewServerStdEnc(
 		endpoints.SumEndpoint,
 		decodeHTTPSumRequest,
 		encodeHTTPGenericResponse,
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "Sum", logger)))...,
 	))
-	m.Handle("/concat", httptransport.NewServer(
+	m.Handle("/concat", thttptransport.NewServerStdEnc(
 		endpoints.ConcatEndpoint,
 		decodeHTTPConcatRequest,
 		encodeHTTPGenericResponse,
@@ -99,46 +101,46 @@ func NewHTTPClient(instance string, otTracer stdopentracing.Tracer, zipkinTracer
 	// endpoint.Endpoint) that gets wrapped with various middlewares. If you
 	// made your own client library, you'd do this work there, so your server
 	// could rely on a consistent set of client behavior.
-	var sumEndpoint endpoint.Endpoint
+	var sumEndpoint tendpoint.Endpoint[addendpoint.SumRequest, addendpoint.SumResponse]
 	{
-		sumEndpoint = httptransport.NewClient(
+		sumEndpoint = thttptransport.NewClientStdEnc[addendpoint.SumRequest](
 			"POST",
 			copyURL(u, "/sum"),
 			encodeHTTPGenericRequest,
 			decodeHTTPSumResponse,
 			append(options, httptransport.ClientBefore(opentracing.ContextToHTTP(otTracer, logger)))...,
 		).Endpoint()
-		sumEndpoint = opentracing.TraceClient(otTracer, "Sum")(sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(otTracer, "Sum"), sumEndpoint)
 		if zipkinTracer != nil {
-			sumEndpoint = zipkin.TraceEndpoint(zipkinTracer, "Sum")(sumEndpoint)
+			sumEndpoint = tendpoint.MiddlewareWrapper(zipkin.TraceEndpoint(zipkinTracer, "Sum"), sumEndpoint)
 		}
-		sumEndpoint = limiter(sumEndpoint)
-		sumEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		sumEndpoint = tendpoint.MiddlewareWrapper(limiter, sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Sum",
 			Timeout: 30 * time.Second,
-		}))(sumEndpoint)
+		})), sumEndpoint)
 	}
 
 	// The Concat endpoint is the same thing, with slightly different
 	// middlewares to demonstrate how to specialize per-endpoint.
-	var concatEndpoint endpoint.Endpoint
+	var concatEndpoint tendpoint.Endpoint[addendpoint.ConcatRequest, addendpoint.ConcatResponse]
 	{
-		concatEndpoint = httptransport.NewClient(
+		concatEndpoint = thttptransport.NewClientStdEnc[addendpoint.ConcatRequest](
 			"POST",
 			copyURL(u, "/concat"),
 			encodeHTTPGenericRequest,
 			decodeHTTPConcatResponse,
 			append(options, httptransport.ClientBefore(opentracing.ContextToHTTP(otTracer, logger)))...,
 		).Endpoint()
-		concatEndpoint = opentracing.TraceClient(otTracer, "Concat")(concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(otTracer, "Concat"), concatEndpoint)
 		if zipkinTracer != nil {
-			concatEndpoint = zipkin.TraceEndpoint(zipkinTracer, "Concat")(concatEndpoint)
+			concatEndpoint = tendpoint.MiddlewareWrapper(zipkin.TraceEndpoint(zipkinTracer, "Concat"), concatEndpoint)
 		}
-		concatEndpoint = limiter(concatEndpoint)
-		concatEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		concatEndpoint = tendpoint.MiddlewareWrapper(limiter, concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Concat",
 			Timeout: 10 * time.Second,
-		}))(concatEndpoint)
+		})), concatEndpoint)
 	}
 
 	// Returning the endpoint.Set as a service.Service relies on the
@@ -184,7 +186,7 @@ type errorWrapper struct {
 // decodeHTTPSumRequest is a transport/http.DecodeRequestFunc that decodes a
 // JSON-encoded sum request from the HTTP request body. Primarily useful in a
 // server.
-func decodeHTTPSumRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeHTTPSumRequest(_ context.Context, r *http.Request) (addendpoint.SumRequest, error) {
 	var req addendpoint.SumRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	return req, err
@@ -193,7 +195,7 @@ func decodeHTTPSumRequest(_ context.Context, r *http.Request) (interface{}, erro
 // decodeHTTPConcatRequest is a transport/http.DecodeRequestFunc that decodes a
 // JSON-encoded concat request from the HTTP request body. Primarily useful in a
 // server.
-func decodeHTTPConcatRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeHTTPConcatRequest(_ context.Context, r *http.Request) (addendpoint.ConcatRequest, error) {
 	var req addendpoint.ConcatRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	return req, err
@@ -204,9 +206,9 @@ func decodeHTTPConcatRequest(_ context.Context, r *http.Request) (interface{}, e
 // non-200 status code, we will interpret that as an error and attempt to decode
 // the specific error message from the response body. Primarily useful in a
 // client.
-func decodeHTTPSumResponse(_ context.Context, r *http.Response) (interface{}, error) {
+func decodeHTTPSumResponse(_ context.Context, r *http.Response) (addendpoint.SumResponse, error) {
 	if r.StatusCode != http.StatusOK {
-		return nil, errors.New(r.Status)
+		return addendpoint.SumResponse{}, errors.New(r.Status)
 	}
 	var resp addendpoint.SumResponse
 	err := json.NewDecoder(r.Body).Decode(&resp)
@@ -218,9 +220,9 @@ func decodeHTTPSumResponse(_ context.Context, r *http.Response) (interface{}, er
 // has a non-200 status code, we will interpret that as an error and attempt to
 // decode the specific error message from the response body. Primarily useful in
 // a client.
-func decodeHTTPConcatResponse(_ context.Context, r *http.Response) (interface{}, error) {
+func decodeHTTPConcatResponse(_ context.Context, r *http.Response) (addendpoint.ConcatResponse, error) {
 	if r.StatusCode != http.StatusOK {
-		return nil, errors.New(r.Status)
+		return addendpoint.ConcatResponse{}, errors.New(r.Status)
 	}
 	var resp addendpoint.ConcatResponse
 	err := json.NewDecoder(r.Body).Decode(&resp)
