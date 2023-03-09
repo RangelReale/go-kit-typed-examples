@@ -49,63 +49,63 @@ func New(consulAddr string, logger log.Logger) (profilesvc.Service, error) {
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.PostProfileEndpoint = tendpoint.EndpointAdapter[profilesvc.postProfileRequest, profilesvc.postProfileResponse](retry)
+		endpoints.PostProfileEndpoint = tendpoint.EndpointCast(endpoints.PostProfileEndpoint, retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakeGetProfileEndpoint)
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.GetProfileEndpoint = retry
+		endpoints.GetProfileEndpoint = tendpoint.EndpointCast(endpoints.GetProfileEndpoint, retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakePutProfileEndpoint)
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.PutProfileEndpoint = retry
+		endpoints.PutProfileEndpoint = tendpoint.EndpointCast(endpoints.PutProfileEndpoint, retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakePatchProfileEndpoint)
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.PatchProfileEndpoint = retry
+		endpoints.PatchProfileEndpoint = tendpoint.EndpointCast(endpoints.PatchProfileEndpoint, retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakeDeleteProfileEndpoint)
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.DeleteProfileEndpoint = retry
+		endpoints.DeleteProfileEndpoint = tendpoint.EndpointCast(endpoints.DeleteProfileEndpoint, retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakeGetAddressesEndpoint)
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.GetAddressesEndpoint = retry
+		endpoints.GetAddressesEndpoint = tendpoint.EndpointCast(endpoints.GetAddressesEndpoint, retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakeGetAddressEndpoint)
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.GetAddressEndpoint = retry
+		endpoints.GetAddressEndpoint = tendpoint.EndpointCast(endpoints.GetAddressEndpoint, retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakePostAddressEndpoint)
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.PostAddressEndpoint = retry
+		endpoints.PostAddressEndpoint = tendpoint.EndpointCast(endpoints.PostAddressEndpoint, retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakeDeleteAddressEndpoint)
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.DeleteAddressEndpoint = retry
+		endpoints.DeleteAddressEndpoint = tendpoint.EndpointCast(endpoints.DeleteAddressEndpoint, retry)
 	}
 
 	return endpoints, nil
