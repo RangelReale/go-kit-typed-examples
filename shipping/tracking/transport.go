@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	kitlog "github.com/go-kit/kit/log"
 	kittransport "github.com/go-kit/kit/transport"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -24,7 +25,7 @@ func MakeHandler(ts Service, logger kitlog.Logger) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	trackCargoHandler := kithttp.NewServer(
+	trackCargoHandler := thttptransport.NewServerStdEnc(
 		makeTrackCargoEndpoint(ts),
 		decodeTrackCargoRequest,
 		encodeResponse,
@@ -36,11 +37,11 @@ func MakeHandler(ts Service, logger kitlog.Logger) http.Handler {
 	return r
 }
 
-func decodeTrackCargoRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeTrackCargoRequest(_ context.Context, r *http.Request) (trackCargoRequest, error) {
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, errors.New("bad route")
+		return trackCargoRequest{}, errors.New("bad route")
 	}
 	return trackCargoRequest{ID: id}, nil
 }

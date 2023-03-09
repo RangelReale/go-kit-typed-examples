@@ -3,7 +3,7 @@ package tracking
 import (
 	"context"
 
-	"github.com/go-kit/kit/endpoint"
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 )
 
 type trackCargoRequest struct {
@@ -17,9 +17,8 @@ type trackCargoResponse struct {
 
 func (r trackCargoResponse) error() error { return r.Err }
 
-func makeTrackCargoEndpoint(ts Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(trackCargoRequest)
+func makeTrackCargoEndpoint(ts Service) tendpoint.Endpoint[trackCargoRequest, trackCargoResponse] {
+	return func(ctx context.Context, req trackCargoRequest) (trackCargoResponse, error) {
 		c, err := ts.Track(req.ID)
 		return trackCargoResponse{Cargo: &c, Err: err}, nil
 	}
