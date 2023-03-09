@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 	"google.golang.org/grpc"
 
 	stdopentracing "github.com/opentracing/opentracing-go"
@@ -12,8 +13,8 @@ import (
 	"github.com/sony/gobreaker"
 	"golang.org/x/time/rate"
 
+	tgrpctransport "github.com/RangelReale/go-kit-typed/transport/grpc"
 	"github.com/go-kit/kit/circuitbreaker"
-	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/ratelimit"
 	"github.com/go-kit/kit/tracing/opentracing"
@@ -51,13 +52,13 @@ func NewGRPCServer(endpoints addendpoint.Set, otTracer stdopentracing.Tracer, zi
 	}
 
 	return &grpcServer{
-		sum: grpctransport.NewServer(
+		sum: tgrpctransport.NewServer(
 			endpoints.SumEndpoint,
 			decodeGRPCSumRequest,
 			encodeGRPCSumResponse,
 			append(options, grpctransport.ServerBefore(opentracing.GRPCToContext(otTracer, "Sum", logger)))...,
 		),
-		concat: grpctransport.NewServer(
+		concat: tgrpctransport.NewServer(
 			endpoints.ConcatEndpoint,
 			decodeGRPCConcatRequest,
 			encodeGRPCConcatResponse,
@@ -112,9 +113,9 @@ func NewGRPCClient(conn *grpc.ClientConn, otTracer stdopentracing.Tracer, zipkin
 	// endpoint.Endpoint) that gets wrapped with various middlewares. If you
 	// made your own client library, you'd do this work there, so your server
 	// could rely on a consistent set of client behavior.
-	var sumEndpoint endpoint.Endpoint
+	var sumEndpoint tendpoint.Endpoint[addendpoint.SumRequest, addendpoint.SumResponse]
 	{
-		sumEndpoint = grpctransport.NewClient(
+		sumEndpoint = tgrpctransport.NewClient[addendpoint.SumRequest, addendpoint.SumResponse](
 			conn,
 			"pb.Add",
 			"Sum",
@@ -123,19 +124,19 @@ func NewGRPCClient(conn *grpc.ClientConn, otTracer stdopentracing.Tracer, zipkin
 			pb.SumReply{},
 			append(options, grpctransport.ClientBefore(opentracing.ContextToGRPC(otTracer, logger)))...,
 		).Endpoint()
-		sumEndpoint = opentracing.TraceClient(otTracer, "Sum")(sumEndpoint)
-		sumEndpoint = limiter(sumEndpoint)
-		sumEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		sumEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(otTracer, "Sum"), sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(limiter, sumEndpoint)
+		sumEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Sum",
 			Timeout: 30 * time.Second,
-		}))(sumEndpoint)
+		})), sumEndpoint)
 	}
 
 	// The Concat endpoint is the same thing, with slightly different
 	// middlewares to demonstrate how to specialize per-endpoint.
-	var concatEndpoint endpoint.Endpoint
+	var concatEndpoint tendpoint.Endpoint[addendpoint.ConcatRequest, addendpoint.ConcatResponse]
 	{
-		concatEndpoint = grpctransport.NewClient(
+		concatEndpoint = tgrpctransport.NewClient(
 			conn,
 			"pb.Add",
 			"Concat",
@@ -144,12 +145,12 @@ func NewGRPCClient(conn *grpc.ClientConn, otTracer stdopentracing.Tracer, zipkin
 			pb.ConcatReply{},
 			append(options, grpctransport.ClientBefore(opentracing.ContextToGRPC(otTracer, logger)))...,
 		).Endpoint()
-		concatEndpoint = opentracing.TraceClient(otTracer, "Concat")(concatEndpoint)
-		concatEndpoint = limiter(concatEndpoint)
-		concatEndpoint = circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		concatEndpoint = tendpoint.MiddlewareWrapper(opentracing.TraceClient(otTracer, "Concat"), concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(limiter, concatEndpoint)
+		concatEndpoint = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{
 			Name:    "Concat",
 			Timeout: 10 * time.Second,
-		}))(concatEndpoint)
+		})), concatEndpoint)
 	}
 
 	// Returning the endpoint.Set as a service.Service relies on the
@@ -163,7 +164,7 @@ func NewGRPCClient(conn *grpc.ClientConn, otTracer stdopentracing.Tracer, zipkin
 
 // decodeGRPCSumRequest is a transport/grpc.DecodeRequestFunc that converts a
 // gRPC sum request to a user-domain sum request. Primarily useful in a server.
-func decodeGRPCSumRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
+func decodeGRPCSumRequest(_ context.Context, grpcReq interface{}) (addendpoint.SumRequest, error) {
 	req := grpcReq.(*pb.SumRequest)
 	return addendpoint.SumRequest{A: int(req.A), B: int(req.B)}, nil
 }
@@ -171,14 +172,14 @@ func decodeGRPCSumRequest(_ context.Context, grpcReq interface{}) (interface{}, 
 // decodeGRPCConcatRequest is a transport/grpc.DecodeRequestFunc that converts a
 // gRPC concat request to a user-domain concat request. Primarily useful in a
 // server.
-func decodeGRPCConcatRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
+func decodeGRPCConcatRequest(_ context.Context, grpcReq interface{}) (addendpoint.ConcatRequest, error) {
 	req := grpcReq.(*pb.ConcatRequest)
 	return addendpoint.ConcatRequest{A: req.A, B: req.B}, nil
 }
 
 // decodeGRPCSumResponse is a transport/grpc.DecodeResponseFunc that converts a
 // gRPC sum reply to a user-domain sum response. Primarily useful in a client.
-func decodeGRPCSumResponse(_ context.Context, grpcReply interface{}) (interface{}, error) {
+func decodeGRPCSumResponse(_ context.Context, grpcReply interface{}) (addendpoint.SumResponse, error) {
 	reply := grpcReply.(*pb.SumReply)
 	return addendpoint.SumResponse{V: int(reply.V), Err: str2err(reply.Err)}, nil
 }
@@ -186,38 +187,34 @@ func decodeGRPCSumResponse(_ context.Context, grpcReply interface{}) (interface{
 // decodeGRPCConcatResponse is a transport/grpc.DecodeResponseFunc that converts
 // a gRPC concat reply to a user-domain concat response. Primarily useful in a
 // client.
-func decodeGRPCConcatResponse(_ context.Context, grpcReply interface{}) (interface{}, error) {
+func decodeGRPCConcatResponse(_ context.Context, grpcReply interface{}) (addendpoint.ConcatResponse, error) {
 	reply := grpcReply.(*pb.ConcatReply)
 	return addendpoint.ConcatResponse{V: reply.V, Err: str2err(reply.Err)}, nil
 }
 
 // encodeGRPCSumResponse is a transport/grpc.EncodeResponseFunc that converts a
 // user-domain sum response to a gRPC sum reply. Primarily useful in a server.
-func encodeGRPCSumResponse(_ context.Context, response interface{}) (interface{}, error) {
-	resp := response.(addendpoint.SumResponse)
+func encodeGRPCSumResponse(_ context.Context, resp addendpoint.SumResponse) (interface{}, error) {
 	return &pb.SumReply{V: int64(resp.V), Err: err2str(resp.Err)}, nil
 }
 
 // encodeGRPCConcatResponse is a transport/grpc.EncodeResponseFunc that converts
 // a user-domain concat response to a gRPC concat reply. Primarily useful in a
 // server.
-func encodeGRPCConcatResponse(_ context.Context, response interface{}) (interface{}, error) {
-	resp := response.(addendpoint.ConcatResponse)
+func encodeGRPCConcatResponse(_ context.Context, resp addendpoint.ConcatResponse) (interface{}, error) {
 	return &pb.ConcatReply{V: resp.V, Err: err2str(resp.Err)}, nil
 }
 
 // encodeGRPCSumRequest is a transport/grpc.EncodeRequestFunc that converts a
 // user-domain sum request to a gRPC sum request. Primarily useful in a client.
-func encodeGRPCSumRequest(_ context.Context, request interface{}) (interface{}, error) {
-	req := request.(addendpoint.SumRequest)
+func encodeGRPCSumRequest(_ context.Context, req addendpoint.SumRequest) (interface{}, error) {
 	return &pb.SumRequest{A: int64(req.A), B: int64(req.B)}, nil
 }
 
 // encodeGRPCConcatRequest is a transport/grpc.EncodeRequestFunc that converts a
 // user-domain concat request to a gRPC concat request. Primarily useful in a
 // client.
-func encodeGRPCConcatRequest(_ context.Context, request interface{}) (interface{}, error) {
-	req := request.(addendpoint.ConcatRequest)
+func encodeGRPCConcatRequest(_ context.Context, req addendpoint.ConcatRequest) (interface{}, error) {
 	return &pb.ConcatRequest{A: req.A, B: req.B}, nil
 }
 
