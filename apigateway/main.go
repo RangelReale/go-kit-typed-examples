@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 	consulsd "github.com/go-kit/kit/sd/consul"
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/consul/api"
@@ -94,14 +95,14 @@ func main() {
 			endpointer := sd.NewEndpointer(instancer, factory, logger)
 			balancer := lb.NewRoundRobin(endpointer)
 			retry := lb.Retry(*retryMax, *retryTimeout, balancer)
-			endpoints.SumEndpoint = retry
+			endpoints.SumEndpoint = tendpoint.Cast(endpoints.SumEndpoint, retry)
 		}
 		{
 			factory := addsvcFactory(addendpoint.MakeConcatEndpoint, tracer, zipkinTracer, logger)
 			endpointer := sd.NewEndpointer(instancer, factory, logger)
 			balancer := lb.NewRoundRobin(endpointer)
 			retry := lb.Retry(*retryMax, *retryTimeout, balancer)
-			endpoints.ConcatEndpoint = retry
+			endpoints.ConcatEndpoint = tendpoint.Cast(endpoints.ConcatEndpoint, retry)
 		}
 
 		// Here we leverage the fact that addsvc comes with a constructor for an
@@ -167,7 +168,8 @@ func main() {
 	logger.Log("exit", <-errc)
 }
 
-func addsvcFactory(makeEndpoint func(addservice.Service) endpoint.Endpoint, tracer stdopentracing.Tracer, zipkinTracer *stdzipkin.Tracer, logger log.Logger) sd.Factory {
+func addsvcFactory[Req any, Resp any](makeEndpoint func(addservice.Service) tendpoint.Endpoint[Req, Resp],
+	tracer stdopentracing.Tracer, zipkinTracer *stdzipkin.Tracer, logger log.Logger) sd.Factory {
 	return func(instance string) (endpoint.Endpoint, io.Closer, error) {
 		// We could just as easily use the HTTP or Thrift client package to make
 		// the connection to addsvc. We've chosen gRPC arbitrarily. Note that
@@ -179,7 +181,7 @@ func addsvcFactory(makeEndpoint func(addservice.Service) endpoint.Endpoint, trac
 			return nil, nil, err
 		}
 		service := addtransport.NewGRPCClient(conn, tracer, zipkinTracer, logger)
-		endpoint := makeEndpoint(service)
+		endpoint := tendpoint.ReverseAdapter(makeEndpoint(service))
 
 		// Notice that the addsvc gRPC client converts the connection to a
 		// complete addsvc, and we just throw away everything except the method
