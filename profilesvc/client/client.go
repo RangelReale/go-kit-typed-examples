@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
 	consulapi "github.com/hashicorp/consul/api"
 
 	"github.com/go-kit/examples/profilesvc"
@@ -48,7 +49,7 @@ func New(consulAddr string, logger log.Logger) (profilesvc.Service, error) {
 		endpointer := sd.NewEndpointer(instancer, factory, logger)
 		balancer := lb.NewRoundRobin(endpointer)
 		retry := lb.Retry(retryMax, retryTimeout, balancer)
-		endpoints.PostProfileEndpoint = retry
+		endpoints.PostProfileEndpoint = tendpoint.EndpointAdapter[profilesvc.postProfileRequest, profilesvc.postProfileResponse](retry)
 	}
 	{
 		factory := factoryFor(profilesvc.MakeGetProfileEndpoint)
@@ -110,12 +111,12 @@ func New(consulAddr string, logger log.Logger) (profilesvc.Service, error) {
 	return endpoints, nil
 }
 
-func factoryFor(makeEndpoint func(profilesvc.Service) endpoint.Endpoint) sd.Factory {
+func factoryFor[Req any, Resp any](makeEndpoint func(profilesvc.Service) tendpoint.Endpoint[Req, Resp]) sd.Factory {
 	return func(instance string) (endpoint.Endpoint, io.Closer, error) {
 		service, err := profilesvc.MakeClientEndpoints(instance)
 		if err != nil {
 			return nil, nil, err
 		}
-		return makeEndpoint(service), nil, nil
+		return tendpoint.EndpointReverseAdapter(makeEndpoint(service)), nil, nil
 	}
 }

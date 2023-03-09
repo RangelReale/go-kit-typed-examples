@@ -5,7 +5,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/go-kit/kit/endpoint"
+	tendpoint "github.com/RangelReale/go-kit-typed/endpoint"
+	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	httptransport "github.com/go-kit/kit/transport/http"
 )
 
@@ -24,15 +25,15 @@ import (
 // construct individual endpoints using transport/http.NewClient, combine them
 // into an Endpoints, and return it to the caller as a Service.
 type Endpoints struct {
-	PostProfileEndpoint   endpoint.Endpoint
-	GetProfileEndpoint    endpoint.Endpoint
-	PutProfileEndpoint    endpoint.Endpoint
-	PatchProfileEndpoint  endpoint.Endpoint
-	DeleteProfileEndpoint endpoint.Endpoint
-	GetAddressesEndpoint  endpoint.Endpoint
-	GetAddressEndpoint    endpoint.Endpoint
-	PostAddressEndpoint   endpoint.Endpoint
-	DeleteAddressEndpoint endpoint.Endpoint
+	PostProfileEndpoint   tendpoint.Endpoint[postProfileRequest, postProfileResponse]
+	GetProfileEndpoint    tendpoint.Endpoint[getProfileRequest, getProfileResponse]
+	PutProfileEndpoint    tendpoint.Endpoint[putProfileRequest, putProfileResponse]
+	PatchProfileEndpoint  tendpoint.Endpoint[patchProfileRequest, patchProfileResponse]
+	DeleteProfileEndpoint tendpoint.Endpoint[deleteProfileRequest, deleteProfileResponse]
+	GetAddressesEndpoint  tendpoint.Endpoint[getAddressesRequest, getAddressesResponse]
+	GetAddressEndpoint    tendpoint.Endpoint[getAddressRequest, getAddressResponse]
+	PostAddressEndpoint   tendpoint.Endpoint[postAddressRequest, postAddressResponse]
+	DeleteAddressEndpoint tendpoint.Endpoint[deleteAddressRequest, deleteAddressResponse]
 }
 
 // MakeServerEndpoints returns an Endpoints struct where each endpoint invokes
@@ -72,122 +73,112 @@ func MakeClientEndpoints(instance string) (Endpoints, error) {
 	// each endpoint.
 
 	return Endpoints{
-		PostProfileEndpoint:   httptransport.NewClient("POST", tgt, encodePostProfileRequest, decodePostProfileResponse, options...).Endpoint(),
-		GetProfileEndpoint:    httptransport.NewClient("GET", tgt, encodeGetProfileRequest, decodeGetProfileResponse, options...).Endpoint(),
-		PutProfileEndpoint:    httptransport.NewClient("PUT", tgt, encodePutProfileRequest, decodePutProfileResponse, options...).Endpoint(),
-		PatchProfileEndpoint:  httptransport.NewClient("PATCH", tgt, encodePatchProfileRequest, decodePatchProfileResponse, options...).Endpoint(),
-		DeleteProfileEndpoint: httptransport.NewClient("DELETE", tgt, encodeDeleteProfileRequest, decodeDeleteProfileResponse, options...).Endpoint(),
-		GetAddressesEndpoint:  httptransport.NewClient("GET", tgt, encodeGetAddressesRequest, decodeGetAddressesResponse, options...).Endpoint(),
-		GetAddressEndpoint:    httptransport.NewClient("GET", tgt, encodeGetAddressRequest, decodeGetAddressResponse, options...).Endpoint(),
-		PostAddressEndpoint:   httptransport.NewClient("POST", tgt, encodePostAddressRequest, decodePostAddressResponse, options...).Endpoint(),
-		DeleteAddressEndpoint: httptransport.NewClient("DELETE", tgt, encodeDeleteAddressRequest, decodeDeleteAddressResponse, options...).Endpoint(),
+		PostProfileEndpoint:   thttptransport.NewClient("POST", tgt, encodePostProfileRequest, decodePostProfileResponse, options...).Endpoint(),
+		GetProfileEndpoint:    thttptransport.NewClient("GET", tgt, encodeGetProfileRequest, decodeGetProfileResponse, options...).Endpoint(),
+		PutProfileEndpoint:    thttptransport.NewClient("PUT", tgt, encodePutProfileRequest, decodePutProfileResponse, options...).Endpoint(),
+		PatchProfileEndpoint:  thttptransport.NewClient("PATCH", tgt, encodePatchProfileRequest, decodePatchProfileResponse, options...).Endpoint(),
+		DeleteProfileEndpoint: thttptransport.NewClient("DELETE", tgt, encodeDeleteProfileRequest, decodeDeleteProfileResponse, options...).Endpoint(),
+		GetAddressesEndpoint:  thttptransport.NewClient("GET", tgt, encodeGetAddressesRequest, decodeGetAddressesResponse, options...).Endpoint(),
+		GetAddressEndpoint:    thttptransport.NewClient("GET", tgt, encodeGetAddressRequest, decodeGetAddressResponse, options...).Endpoint(),
+		PostAddressEndpoint:   thttptransport.NewClient("POST", tgt, encodePostAddressRequest, decodePostAddressResponse, options...).Endpoint(),
+		DeleteAddressEndpoint: thttptransport.NewClient("DELETE", tgt, encodeDeleteAddressRequest, decodeDeleteAddressResponse, options...).Endpoint(),
 	}, nil
 }
 
 // PostProfile implements Service. Primarily useful in a client.
 func (e Endpoints) PostProfile(ctx context.Context, p Profile) error {
 	request := postProfileRequest{Profile: p}
-	response, err := e.PostProfileEndpoint(ctx, request)
+	resp, err := e.PostProfileEndpoint(ctx, request)
 	if err != nil {
 		return err
 	}
-	resp := response.(postProfileResponse)
 	return resp.Err
 }
 
 // GetProfile implements Service. Primarily useful in a client.
 func (e Endpoints) GetProfile(ctx context.Context, id string) (Profile, error) {
 	request := getProfileRequest{ID: id}
-	response, err := e.GetProfileEndpoint(ctx, request)
+	resp, err := e.GetProfileEndpoint(ctx, request)
 	if err != nil {
 		return Profile{}, err
 	}
-	resp := response.(getProfileResponse)
 	return resp.Profile, resp.Err
 }
 
 // PutProfile implements Service. Primarily useful in a client.
 func (e Endpoints) PutProfile(ctx context.Context, id string, p Profile) error {
 	request := putProfileRequest{ID: id, Profile: p}
-	response, err := e.PutProfileEndpoint(ctx, request)
+	resp, err := e.PutProfileEndpoint(ctx, request)
 	if err != nil {
 		return err
 	}
-	resp := response.(putProfileResponse)
 	return resp.Err
 }
 
 // PatchProfile implements Service. Primarily useful in a client.
 func (e Endpoints) PatchProfile(ctx context.Context, id string, p Profile) error {
 	request := patchProfileRequest{ID: id, Profile: p}
-	response, err := e.PatchProfileEndpoint(ctx, request)
+	resp, err := e.PatchProfileEndpoint(ctx, request)
 	if err != nil {
 		return err
 	}
-	resp := response.(patchProfileResponse)
 	return resp.Err
 }
 
 // DeleteProfile implements Service. Primarily useful in a client.
 func (e Endpoints) DeleteProfile(ctx context.Context, id string) error {
 	request := deleteProfileRequest{ID: id}
-	response, err := e.DeleteProfileEndpoint(ctx, request)
+	resp, err := e.DeleteProfileEndpoint(ctx, request)
 	if err != nil {
 		return err
 	}
-	resp := response.(deleteProfileResponse)
 	return resp.Err
 }
 
 // GetAddresses implements Service. Primarily useful in a client.
 func (e Endpoints) GetAddresses(ctx context.Context, profileID string) ([]Address, error) {
 	request := getAddressesRequest{ProfileID: profileID}
-	response, err := e.GetAddressesEndpoint(ctx, request)
+	resp, err := e.GetAddressesEndpoint(ctx, request)
 	if err != nil {
 		return nil, err
 	}
-	resp := response.(getAddressesResponse)
 	return resp.Addresses, resp.Err
 }
 
 // GetAddress implements Service. Primarily useful in a client.
 func (e Endpoints) GetAddress(ctx context.Context, profileID string, addressID string) (Address, error) {
 	request := getAddressRequest{ProfileID: profileID, AddressID: addressID}
-	response, err := e.GetAddressEndpoint(ctx, request)
+	resp, err := e.GetAddressEndpoint(ctx, request)
 	if err != nil {
 		return Address{}, err
 	}
-	resp := response.(getAddressResponse)
 	return resp.Address, resp.Err
 }
 
 // PostAddress implements Service. Primarily useful in a client.
 func (e Endpoints) PostAddress(ctx context.Context, profileID string, a Address) error {
 	request := postAddressRequest{ProfileID: profileID, Address: a}
-	response, err := e.PostAddressEndpoint(ctx, request)
+	resp, err := e.PostAddressEndpoint(ctx, request)
 	if err != nil {
 		return err
 	}
-	resp := response.(postAddressResponse)
 	return resp.Err
 }
 
 // DeleteAddress implements Service. Primarily useful in a client.
 func (e Endpoints) DeleteAddress(ctx context.Context, profileID string, addressID string) error {
 	request := deleteAddressRequest{ProfileID: profileID, AddressID: addressID}
-	response, err := e.DeleteAddressEndpoint(ctx, request)
+	resp, err := e.DeleteAddressEndpoint(ctx, request)
 	if err != nil {
 		return err
 	}
-	resp := response.(deleteAddressResponse)
 	return resp.Err
 }
 
 // MakePostProfileEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakePostProfileEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(postProfileRequest)
+func MakePostProfileEndpoint(s Service) tendpoint.Endpoint[postProfileRequest, postProfileResponse] {
+	return func(ctx context.Context, req postProfileRequest) (response postProfileResponse, err error) {
 		e := s.PostProfile(ctx, req.Profile)
 		return postProfileResponse{Err: e}, nil
 	}
@@ -195,9 +186,8 @@ func MakePostProfileEndpoint(s Service) endpoint.Endpoint {
 
 // MakeGetProfileEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakeGetProfileEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(getProfileRequest)
+func MakeGetProfileEndpoint(s Service) tendpoint.Endpoint[getProfileRequest, getProfileResponse] {
+	return func(ctx context.Context, req getProfileRequest) (response getProfileResponse, err error) {
 		p, e := s.GetProfile(ctx, req.ID)
 		return getProfileResponse{Profile: p, Err: e}, nil
 	}
@@ -205,9 +195,8 @@ func MakeGetProfileEndpoint(s Service) endpoint.Endpoint {
 
 // MakePutProfileEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakePutProfileEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(putProfileRequest)
+func MakePutProfileEndpoint(s Service) tendpoint.Endpoint[putProfileRequest, putProfileResponse] {
+	return func(ctx context.Context, req putProfileRequest) (response putProfileResponse, err error) {
 		e := s.PutProfile(ctx, req.ID, req.Profile)
 		return putProfileResponse{Err: e}, nil
 	}
@@ -215,9 +204,8 @@ func MakePutProfileEndpoint(s Service) endpoint.Endpoint {
 
 // MakePatchProfileEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakePatchProfileEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(patchProfileRequest)
+func MakePatchProfileEndpoint(s Service) tendpoint.Endpoint[patchProfileRequest, patchProfileResponse] {
+	return func(ctx context.Context, req patchProfileRequest) (response patchProfileResponse, err error) {
 		e := s.PatchProfile(ctx, req.ID, req.Profile)
 		return patchProfileResponse{Err: e}, nil
 	}
@@ -225,9 +213,8 @@ func MakePatchProfileEndpoint(s Service) endpoint.Endpoint {
 
 // MakeDeleteProfileEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakeDeleteProfileEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(deleteProfileRequest)
+func MakeDeleteProfileEndpoint(s Service) tendpoint.Endpoint[deleteProfileRequest, deleteProfileResponse] {
+	return func(ctx context.Context, req deleteProfileRequest) (response deleteProfileResponse, err error) {
 		e := s.DeleteProfile(ctx, req.ID)
 		return deleteProfileResponse{Err: e}, nil
 	}
@@ -235,9 +222,8 @@ func MakeDeleteProfileEndpoint(s Service) endpoint.Endpoint {
 
 // MakeGetAddressesEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakeGetAddressesEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(getAddressesRequest)
+func MakeGetAddressesEndpoint(s Service) tendpoint.Endpoint[getAddressesRequest, getAddressesResponse] {
+	return func(ctx context.Context, req getAddressesRequest) (response getAddressesResponse, err error) {
 		a, e := s.GetAddresses(ctx, req.ProfileID)
 		return getAddressesResponse{Addresses: a, Err: e}, nil
 	}
@@ -245,9 +231,8 @@ func MakeGetAddressesEndpoint(s Service) endpoint.Endpoint {
 
 // MakeGetAddressEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakeGetAddressEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(getAddressRequest)
+func MakeGetAddressEndpoint(s Service) tendpoint.Endpoint[getAddressRequest, getAddressResponse] {
+	return func(ctx context.Context, req getAddressRequest) (response getAddressResponse, err error) {
 		a, e := s.GetAddress(ctx, req.ProfileID, req.AddressID)
 		return getAddressResponse{Address: a, Err: e}, nil
 	}
@@ -255,9 +240,8 @@ func MakeGetAddressEndpoint(s Service) endpoint.Endpoint {
 
 // MakePostAddressEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakePostAddressEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(postAddressRequest)
+func MakePostAddressEndpoint(s Service) tendpoint.Endpoint[postAddressRequest, postAddressResponse] {
+	return func(ctx context.Context, req postAddressRequest) (response postAddressResponse, err error) {
 		e := s.PostAddress(ctx, req.ProfileID, req.Address)
 		return postAddressResponse{Err: e}, nil
 	}
@@ -265,9 +249,8 @@ func MakePostAddressEndpoint(s Service) endpoint.Endpoint {
 
 // MakeDeleteAddressEndpoint returns an endpoint via the passed service.
 // Primarily useful in a server.
-func MakeDeleteAddressEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		req := request.(deleteAddressRequest)
+func MakeDeleteAddressEndpoint(s Service) tendpoint.Endpoint[deleteAddressRequest, deleteAddressResponse] {
+	return func(ctx context.Context, req deleteAddressRequest) (response deleteAddressResponse, err error) {
 		e := s.DeleteAddress(ctx, req.ProfileID, req.AddressID)
 		return deleteAddressResponse{Err: e}, nil
 	}
