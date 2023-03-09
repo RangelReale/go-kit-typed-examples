@@ -55,7 +55,7 @@ func proxyingMiddleware(ctx context.Context, instances string, logger log.Logger
 
 		e = tendpoint.MiddlewareWrapper(circuitbreaker.Gobreaker(gobreaker.NewCircuitBreaker(gobreaker.Settings{})), e)
 		e = tendpoint.MiddlewareWrapper(ratelimit.NewErroringLimiter(rate.NewLimiter(rate.Every(time.Second), qps)), e)
-		endpointer = append(endpointer, tendpoint.EndpointAdapterBack(e))
+		endpointer = append(endpointer, tendpoint.EndpointReverseAdapter(e))
 	}
 
 	// Now, build a single, retrying, load-balancing endpoint out of all of
