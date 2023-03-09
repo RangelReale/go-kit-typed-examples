@@ -25,46 +25,46 @@ func MakeHandler(bs Service, logger kitlog.Logger) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	bookCargoHandler := thttptransport.NewServer(
+	bookCargoHandler := thttptransport.NewServerStdResp(
 		makeBookCargoEndpoint(bs),
 		decodeBookCargoRequest,
-		thttptransport.EncodeResponseFuncAdapter[bookCargoResponse](encodeResponse),
+		encodeResponse,
 		opts...,
 	)
-	loadCargoHandler := thttptransport.NewServer(
+	loadCargoHandler := thttptransport.NewServerStdResp(
 		makeLoadCargoEndpoint(bs),
 		decodeLoadCargoRequest,
-		thttptransport.EncodeResponseFuncAdapter[loadCargoResponse](encodeResponse),
+		encodeResponse,
 		opts...,
 	)
-	requestRoutesHandler := thttptransport.NewServer(
+	requestRoutesHandler := thttptransport.NewServerStdResp(
 		makeRequestRoutesEndpoint(bs),
 		decodeRequestRoutesRequest,
-		thttptransport.EncodeResponseFuncAdapter[requestRoutesResponse](encodeResponse),
+		encodeResponse,
 		opts...,
 	)
-	assignToRouteHandler := thttptransport.NewServer(
+	assignToRouteHandler := thttptransport.NewServerStdResp(
 		makeAssignToRouteEndpoint(bs),
 		decodeAssignToRouteRequest,
-		thttptransport.EncodeResponseFuncAdapter[assignToRouteResponse](encodeResponse),
+		encodeResponse,
 		opts...,
 	)
-	changeDestinationHandler := thttptransport.NewServer(
+	changeDestinationHandler := thttptransport.NewServerStdResp(
 		makeChangeDestinationEndpoint(bs),
 		decodeChangeDestinationRequest,
-		thttptransport.EncodeResponseFuncAdapter[changeDestinationResponse](encodeResponse),
+		encodeResponse,
 		opts...,
 	)
-	listCargosHandler := thttptransport.NewServer(
+	listCargosHandler := thttptransport.NewServerStdResp(
 		makeListCargosEndpoint(bs),
 		decodeListCargosRequest,
-		thttptransport.EncodeResponseFuncAdapter[listCargosResponse](encodeResponse),
+		encodeResponse,
 		opts...,
 	)
-	listLocationsHandler := thttptransport.NewServer(
+	listLocationsHandler := thttptransport.NewServerStdResp(
 		makeListLocationsEndpoint(bs),
 		decodeListLocationsRequest,
-		thttptransport.EncodeResponseFuncAdapter[listLocationsResponse](encodeResponse),
+		encodeResponse,
 		opts...,
 	)
 
