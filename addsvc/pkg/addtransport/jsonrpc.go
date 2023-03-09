@@ -117,13 +117,6 @@ func decodeSumRequest(_ context.Context, msg json.RawMessage) (addendpoint.SumRe
 }
 
 func encodeSumResponse(_ context.Context, res addendpoint.SumResponse) (json.RawMessage, error) {
-	// res, ok := obj.(addendpoint.SumResponse)
-	// if !ok {
-	// 	return nil, &jsonrpc.Error{
-	// 		Code:    -32000,
-	// 		Message: fmt.Sprintf("Asserting result to *SumResponse failed. Got %T, %+v", obj, obj),
-	// 	}
-	// }
 	b, err := json.Marshal(res)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't marshal response: %s", err)
@@ -144,10 +137,6 @@ func decodeSumResponse(_ context.Context, res jsonrpc.Response) (addendpoint.Sum
 }
 
 func encodeSumRequest(_ context.Context, req addendpoint.SumRequest) (json.RawMessage, error) {
-	// req, ok := obj.(addendpoint.SumRequest)
-	// if !ok {
-	// 	return nil, fmt.Errorf("couldn't assert request as SumRequest, got %T", obj)
-	// }
 	b, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't marshal request: %s", err)
@@ -168,13 +157,6 @@ func decodeConcatRequest(_ context.Context, msg json.RawMessage) (addendpoint.Co
 }
 
 func encodeConcatResponse(_ context.Context, res addendpoint.ConcatResponse) (json.RawMessage, error) {
-	// res, ok := obj.(addendpoint.ConcatResponse)
-	// if !ok {
-	// 	return nil, &jsonrpc.Error{
-	// 		Code:    -32000,
-	// 		Message: fmt.Sprintf("Asserting result to *ConcatResponse failed. Got %T, %+v", obj, obj),
-	// 	}
-	// }
 	b, err := json.Marshal(res)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't marshal response: %s", err)
@@ -195,10 +177,6 @@ func decodeConcatResponse(_ context.Context, res jsonrpc.Response) (addendpoint.
 }
 
 func encodeConcatRequest(_ context.Context, req addendpoint.ConcatRequest) (json.RawMessage, error) {
-	// req, ok := obj.(addendpoint.ConcatRequest)
-	// if !ok {
-	// 	return nil, fmt.Errorf("couldn't assert request as ConcatRequest, got %T", obj)
-	// }
 	b, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't marshal request: %s", err)
