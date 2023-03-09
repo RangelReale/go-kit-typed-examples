@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	thttptransport "github.com/RangelReale/go-kit-typed/transport/http"
 	kitlog "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/transport"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -24,46 +25,46 @@ func MakeHandler(bs Service, logger kitlog.Logger) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	bookCargoHandler := kithttp.NewServer(
+	bookCargoHandler := thttptransport.NewServer(
 		makeBookCargoEndpoint(bs),
 		decodeBookCargoRequest,
-		encodeResponse,
+		thttptransport.EncodeResponseFuncAdapter[bookCargoResponse](encodeResponse),
 		opts...,
 	)
-	loadCargoHandler := kithttp.NewServer(
+	loadCargoHandler := thttptransport.NewServer(
 		makeLoadCargoEndpoint(bs),
 		decodeLoadCargoRequest,
-		encodeResponse,
+		thttptransport.EncodeResponseFuncAdapter[loadCargoResponse](encodeResponse),
 		opts...,
 	)
-	requestRoutesHandler := kithttp.NewServer(
+	requestRoutesHandler := thttptransport.NewServer(
 		makeRequestRoutesEndpoint(bs),
 		decodeRequestRoutesRequest,
-		encodeResponse,
+		thttptransport.EncodeResponseFuncAdapter[requestRoutesResponse](encodeResponse),
 		opts...,
 	)
-	assignToRouteHandler := kithttp.NewServer(
+	assignToRouteHandler := thttptransport.NewServer(
 		makeAssignToRouteEndpoint(bs),
 		decodeAssignToRouteRequest,
-		encodeResponse,
+		thttptransport.EncodeResponseFuncAdapter[assignToRouteResponse](encodeResponse),
 		opts...,
 	)
-	changeDestinationHandler := kithttp.NewServer(
+	changeDestinationHandler := thttptransport.NewServer(
 		makeChangeDestinationEndpoint(bs),
 		decodeChangeDestinationRequest,
-		encodeResponse,
+		thttptransport.EncodeResponseFuncAdapter[changeDestinationResponse](encodeResponse),
 		opts...,
 	)
-	listCargosHandler := kithttp.NewServer(
+	listCargosHandler := thttptransport.NewServer(
 		makeListCargosEndpoint(bs),
 		decodeListCargosRequest,
-		encodeResponse,
+		thttptransport.EncodeResponseFuncAdapter[listCargosResponse](encodeResponse),
 		opts...,
 	)
-	listLocationsHandler := kithttp.NewServer(
+	listLocationsHandler := thttptransport.NewServer(
 		makeListLocationsEndpoint(bs),
 		decodeListLocationsRequest,
-		encodeResponse,
+		thttptransport.EncodeResponseFuncAdapter[listLocationsResponse](encodeResponse),
 		opts...,
 	)
 
@@ -82,7 +83,7 @@ func MakeHandler(bs Service, logger kitlog.Logger) http.Handler {
 
 var errBadRoute = errors.New("bad route")
 
-func decodeBookCargoRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeBookCargoRequest(_ context.Context, r *http.Request) (bookCargoRequest, error) {
 	var body struct {
 		Origin          string    `json:"origin"`
 		Destination     string    `json:"destination"`
@@ -90,7 +91,7 @@ func decodeBookCargoRequest(_ context.Context, r *http.Request) (interface{}, er
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		return nil, err
+		return bookCargoRequest{}, err
 	}
 
 	return bookCargoRequest{
@@ -100,34 +101,34 @@ func decodeBookCargoRequest(_ context.Context, r *http.Request) (interface{}, er
 	}, nil
 }
 
-func decodeLoadCargoRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeLoadCargoRequest(_ context.Context, r *http.Request) (loadCargoRequest, error) {
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, errBadRoute
+		return loadCargoRequest{}, errBadRoute
 	}
 	return loadCargoRequest{ID: cargo.TrackingID(id)}, nil
 }
 
-func decodeRequestRoutesRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeRequestRoutesRequest(_ context.Context, r *http.Request) (requestRoutesRequest, error) {
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, errBadRoute
+		return requestRoutesRequest{}, errBadRoute
 	}
 	return requestRoutesRequest{ID: cargo.TrackingID(id)}, nil
 }
 
-func decodeAssignToRouteRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeAssignToRouteRequest(_ context.Context, r *http.Request) (assignToRouteRequest, error) {
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, errBadRoute
+		return assignToRouteRequest{}, errBadRoute
 	}
 
 	var itinerary cargo.Itinerary
 	if err := json.NewDecoder(r.Body).Decode(&itinerary); err != nil {
-		return nil, err
+		return assignToRouteRequest{}, err
 	}
 
 	return assignToRouteRequest{
@@ -136,11 +137,11 @@ func decodeAssignToRouteRequest(_ context.Context, r *http.Request) (interface{}
 	}, nil
 }
 
-func decodeChangeDestinationRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeChangeDestinationRequest(_ context.Context, r *http.Request) (changeDestinationRequest, error) {
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, errBadRoute
+		return changeDestinationRequest{}, errBadRoute
 	}
 
 	var body struct {
@@ -148,7 +149,7 @@ func decodeChangeDestinationRequest(_ context.Context, r *http.Request) (interfa
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		return nil, err
+		return changeDestinationRequest{}, err
 	}
 
 	return changeDestinationRequest{
@@ -157,11 +158,11 @@ func decodeChangeDestinationRequest(_ context.Context, r *http.Request) (interfa
 	}, nil
 }
 
-func decodeListCargosRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeListCargosRequest(_ context.Context, r *http.Request) (listCargosRequest, error) {
 	return listCargosRequest{}, nil
 }
 
-func decodeListLocationsRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeListLocationsRequest(_ context.Context, r *http.Request) (listLocationsRequest, error) {
 	return listLocationsRequest{}, nil
 }
 
