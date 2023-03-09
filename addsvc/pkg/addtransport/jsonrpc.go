@@ -99,16 +99,8 @@ func NewJSONRPCClient(instance string, tracer stdopentracing.Tracer, logger log.
 // makeEndpointCodecMap returns a codec map configured for the addsvc.
 func makeEndpointCodecMap(endpoints addendpoint.Set) jsonrpc.EndpointCodecMap {
 	return jsonrpc.EndpointCodecMap{
-		"sum": tjsonrpc.EndpointCodecReverseAdapter(tjsonrpc.EndpointCodec[addendpoint.SumRequest, addendpoint.SumResponse]{
-			Endpoint: endpoints.SumEndpoint,
-			Decode:   decodeSumRequest,
-			Encode:   encodeSumResponse,
-		}),
-		"concat": tjsonrpc.EndpointCodecReverseAdapter(tjsonrpc.EndpointCodec[addendpoint.ConcatRequest, addendpoint.ConcatResponse]{
-			Endpoint: endpoints.ConcatEndpoint,
-			Decode:   decodeConcatRequest,
-			Encode:   encodeConcatResponse,
-		}),
+		"sum":    tjsonrpc.MakeEndpointCodec(endpoints.SumEndpoint, decodeSumRequest, encodeSumResponse),
+		"concat": tjsonrpc.MakeEndpointCodec(endpoints.ConcatEndpoint, decodeConcatRequest, encodeConcatResponse),
 	}
 }
 
