@@ -3,7 +3,7 @@ module github.com/go-kit/examples
 go 1.18
 
 require (
-	github.com/RangelReale/go-kit-typed v0.0.0
+	github.com/RangelReale/go-kit-typed v0.1.1
 	github.com/apache/thrift v0.14.1
 	github.com/go-kit/kit v0.12.0
 	github.com/golang/protobuf v1.5.2
@@ -71,4 +71,4 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 )
 
-replace github.com/RangelReale/go-kit-typed => ../go-kit-typed/
+// replace github.com/RangelReale/go-kit-typed => ../go-kit-typed/
